@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2a1060">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Internet Radio</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+:root{
+  --fg:#fff;--mute:rgba(255,255,255,.72);--line:rgba(255,255,255,.22);
+  --acc:#fff;--tile:rgba(255,255,255,.14);
+  --glass:rgba(30,20,60,.38);--glass-line:rgba(255,255,255,.3);--pill:rgba(255,255,255,.16);
+  --shadow:0 10px 40px rgba(20,0,60,.45);
+}
+html{background:#2a1060}
+body::before{content:"";position:fixed;inset:0;z-index:-1;
+  background:
+   radial-gradient(60vmax 60vmax at 8% 6%,#ff3d81 0,transparent 60%),
+   radial-gradient(55vmax 55vmax at 95% 12%,#ff9a3c 0,transparent 58%),
+   radial-gradient(60vmax 60vmax at 85% 92%,#22d3ee 0,transparent 60%),
+   radial-gradient(60vmax 60vmax at 5% 95%,#7c3aed 0,transparent 60%),
+   linear-gradient(135deg,#3b1d8f,#1b2a8f);
+  background-size:130% 130%;animation:drift 22s ease-in-out infinite alternate}
+@keyframes drift{from{background-position:0% 0%}to{background-position:100% 100%}}
+@media (prefers-reduced-motion:reduce){body::before{animation:none}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;color:var(--fg);font:16px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Segoe UI,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+body{padding:0 clamp(16px,3vw,32px) calc(120px + env(safe-area-inset-bottom));max-width:1100px;margin:0 auto}
+header{padding:calc(28px + env(safe-area-inset-top)) 0 4px}
+h1{margin:0;font-size:clamp(2rem,6vw,2.6rem);font-weight:800;letter-spacing:-.025em}
+h2{margin:30px 0 14px;padding-top:12px;border-top:1px solid var(--line);font-size:1.35rem;font-weight:700;letter-spacing:-.015em}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:22px 16px}
+@media (max-width:480px){.grid{grid-template-columns:repeat(2,1fr);gap:20px 14px}}
+.tile{position:relative;display:block;cursor:pointer}
+.tile input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:2}
+.art{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--tile);box-shadow:0 6px 18px rgba(20,0,60,.4),0 0 0 .5px var(--line);transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.art img{width:100%;height:100%;object-fit:cover;display:block}
+.art::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.55),transparent 45%);opacity:0;transition:opacity .2s}
+.badge{position:absolute;left:10px;bottom:10px;z-index:1;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.88);color:#111;display:grid;place-items:center;opacity:0;transform:scale(.85);transition:.2s}
+.badge svg{width:16px;height:16px;fill:currentColor}
+@media (hover:hover){.tile:hover .art{transform:scale(1.02)}.tile:hover .art::after,.tile:hover .badge{opacity:1;transform:none}}
+.tile input:focus-visible ~ .art{outline:3px solid var(--acc);outline-offset:3px}
+.eq{position:absolute;left:12px;bottom:12px;z-index:1;display:none;gap:3px;align-items:flex-end;height:18px}
+.eq i{width:4px;background:#fff;border-radius:2px;animation:eq 1s ease-in-out infinite;height:30%}
+.eq i:nth-child(2){animation-delay:-.4s}.eq i:nth-child(3){animation-delay:-.8s}
+@keyframes eq{0%,100%{height:25%}50%{height:100%}}
+.tile input:checked ~ .art::after{opacity:1}
+.tile input:checked ~ .art{box-shadow:0 0 0 3px #fff,0 8px 26px rgba(20,0,60,.5)}
+body.on .tile input:checked ~ .art .eq{display:flex}
+body.on .tile input:checked ~ .art .badge{display:none}
+.meta{padding:9px 2px 0}
+.nm{font-size:.95rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.ds{font-size:.82rem;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+
+/* ---- Glass player ---- */
+.dock{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom));display:flex;justify-content:center;padding:0 12px;pointer-events:none;z-index:10}
+.player{pointer-events:auto;width:100%;max-width:760px;height:64px;border-radius:20px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;padding:0 18px;
+  background:var(--glass);-webkit-backdrop-filter:blur(32px) saturate(190%);backdrop-filter:blur(32px) saturate(190%);
+  border:1px solid var(--glass-line);box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.12)}
+.ctl{display:flex;align-items:center;gap:6px}
+.ib{border:0;background:none;color:var(--fg);width:38px;height:38px;border-radius:50%;display:grid;place-items:center;cursor:pointer;opacity:.85;transition:opacity .15s,transform .1s}
+.ib:hover{opacity:1}.ib:active{transform:scale(.9)}
+.ib svg{width:22px;height:22px;fill:currentColor}
+#pp svg{width:26px;height:26px}
+.now{min-width:0;height:44px;border-radius:10px;display:flex;align-items:center;gap:10px;padding:0 6px 0 4px;background:var(--pill);overflow:hidden}
+.now img{width:36px;height:36px;border-radius:6px;object-fit:cover;flex:none}
+.now .t{min-width:0;flex:1}
+.now b{display:block;font-size:.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.now span{display:block;font-size:.74rem;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.now.idle{justify-content:center;color:var(--mute);font-size:.85rem}
+.live{flex:none;font-size:.62rem;font-weight:700;letter-spacing:.06em;padding:3px 8px;border-radius:6px;background:var(--pill);color:var(--mute)}
+.live.on{background:#ff2d55;color:#fff}
+.vol{display:flex;align-items:center;gap:8px;color:var(--fg)}
+.vol svg{width:20px;height:20px;fill:currentColor;opacity:.85}
+#vol{width:90px;accent-color:#fff;height:4px}
+@media (hover:none){.vol{display:none}.player{grid-template-columns:auto 1fr}}
+@media (max-width:560px){
+  .player{padding:0 10px 0 12px;gap:8px}
+  .player{grid-template-columns:1fr auto}
+  .ctl{order:2}.now{order:1}
+  #prev{display:none}
+  .vol{display:none}
+}
+.err{color:#ff453a!important}
+</style>
+</head>
+<body>
+<header><h1>Internet Radio</h1></header>
+<h5>K1R1T1</h5>
+<main id="list"></main>
+
+<div class="dock"><div class="player">
+  <div class="ctl">
+    <button class="ib" id="prev" aria-label="Previous station"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zM20 6v12L9.5 12z"/></svg></button>
+    <button class="ib" id="pp" aria-label="Play"><svg viewBox="0 0 24 24"><path id="ico" d="M8 5v14l11-7z"/></svg></button>
+    <button class="ib" id="next" aria-label="Next station"><svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM4 6v12l10.5-6z"/></svg></button>
+  </div>
+  <div class="now idle" id="now"><span id="idle">Choose a station</span></div>
+  <div class="vol"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg><input id="vol" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume"></div>
+</div></div>
+<audio id="au" preload="none" playsinline></audio>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js"></script>
+<script>
+const I = f=>"data/icons/"+f;
+const BBC = (pool,key)=>`https://as-hls-ww-live.akamaized.net/pool_${pool}/live/ww/${key}/${key}.isml/${key}-audio%3d96000.norewind.m3u8`;
+const STW = m=>`https://playerservices.streamtheworld.com/api/livestream-redirect/${m}AAC.aac`;
+const GROUPS = [
+ {name:"Italy", items:[
+  {id:"vcr-aud", name:"VCR Auditorium", desc:"Venice Classic Radio", url:"https://vcr1gra.ondastreaming.eu/stream2?icecast", meta:{type:"icecast",base:"https://vcr1gra.ondastreaming.eu",mount:"/stream2"}, art:I("station_icon_vcr_auditorium.png"), artist:"Venice Classic Radio"},
+  {id:"vcr-cls", name:"VCR Classica+", desc:"Venice Classic Radio", url:"https://vcr2gra.ondastreaming.eu/stream2?icecast", meta:{type:"icecast",base:"https://vcr2gra.ondastreaming.eu",mount:"/stream2"}, art:I("station_icon_vcr_classica_plus.png"), artist:"Venice Classic Radio"}]},
+ {name:"BBC Radio", items:[
+  {id:"bbc-ws", name:"BBC World Service", desc:"News & talk", url:BBC("87948813","bbc_world_service"), art:I("station_icon_BBC_World_Service.png"), artist:"BBC"},
+  {id:"bbc-r1", name:"BBC Radio 1", desc:"Pop & new music", url:BBC("01505109","bbc_radio_one"), art:I("station_icon_BBC_Radio_1.png"), artist:"BBC"},
+  {id:"bbc-r2", name:"BBC Radio 2", desc:"Pop & easy listening", url:BBC("74208725","bbc_radio_two"), art:I("station_icon_BBC_Radio_2.png"), artist:"BBC"},
+  {id:"bbc-r3", name:"BBC Radio 3", desc:"Classical & jazz", url:BBC("23461179","bbc_radio_three"), art:I("station_icon_BBC_Radio_3.png"), artist:"BBC"},
+  {id:"bbc-r4", name:"BBC Radio 4", desc:"Speech, drama, news", url:BBC("55057080","bbc_radio_fourfm"), art:I("station_icon_BBC_Radio_4.png"), artist:"BBC"},
+  {id:"bbc-6m", name:"BBC Radio 6 Music", desc:"Alternative", url:BBC("81827798","bbc_6music"), art:I("station_icon_BBC_Radio_6_Music.png"), artist:"BBC"}]},
+ {name:"India", items:[
+  {id:"air-vizag", name:"AIR Visakhapatnam", desc:"Akashvani · Telugu", url:"https://radio.wavespb.com/live/8362d532bd498fd0/8362d532bd498fd0.m3u8", art:I("station_icon_AIR_Visakhapatnam.webp"), artist:"All India Radio"}]},
+ {name:"Singapore", items:[
+  {id:"mc-938", name:"938NOW", desc:"News & talk", url:STW("938NOW"), art:I("station_icon_938now.svg"), artist:"Mediacorp"},
+  {id:"mc-c95", name:"CLASS 95", desc:"Hits & chat", url:STW("CLASS95"), art:I("station_icon_class_95.png"), artist:"Mediacorp"},
+  {id:"mc-g905", name:"Gold 905", desc:"Classic hits", url:STW("GOLD905"), art:I("station_icon_gold_905.png"), artist:"Mediacorp"},
+  {id:"mc-sym", name:"Symphony 92.4", desc:"Mediacorp", url:STW("SYMPHONY924"), art:I("station_icon_symphony_924.png"), artist:"Mediacorp"}]}
+];
+const ALL = GROUPS.flatMap(g=>g.items);
+
+const $ = id=>document.getElementById(id);
+const au=$("au"), pp=$("pp"), ico=$("ico"), now=$("now");
+const PLAY="M8 5v14l11-7z", STOP="M7 7h10v10H7z";
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+$("list").innerHTML = GROUPS.map(g=>`<h2>${g.name}</h2><div class="grid">`+g.items.map(c=>`
+  <label class="tile"><input type="radio" name="ch" value="${c.id}" aria-label="${esc(c.name)}">
+   <div class="art"><img src="${c.art}" alt="" loading="lazy" draggable="false"><span class="badge"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span><span class="eq"><i></i><i></i><i></i></span></div>
+   <div class="meta"><div class="nm">${esc(c.name)}</div><div class="ds">${esc(c.desc)}</div></div></label>`).join("")+`</div>`).join("");
+
+let cur=null, hls=null, poll=null, wantPlay=false, stale=false, status="Stopped", title="", sub="", live=false;
+const abs=p=>new URL(p,location.href).href;
+
+function renderNow(){
+  if(!cur){ now.className="now idle"; now.innerHTML='<span id="idle">Choose a station</span>'; return; }
+  now.className="now";
+  now.innerHTML=`<img src="${cur.art}" alt=""><div class="t"><b>${esc(title)}</b><span class="${status==="Live"||status==="Stopped"?"":"err"}">${esc(sub)}</span></div><span class="live ${live?"on":""}">${live?"LIVE":esc(status.toUpperCase())}</span>`;
+}
+function setStatus(s){ status=s; live=(s==="Live"); renderNow(); }
+function setMedia(t,a,album){
+  title=t; sub=[...new Set([a,album].filter(Boolean))].join(" · "); renderNow();
+  if("mediaSession" in navigator) navigator.mediaSession.metadata=new MediaMetadata({title:t,artist:a,album:album||cur.name,artwork:[{src:abs(cur.art),sizes:"512x512"}]});
+}
+if("mediaSession" in navigator){
+  const ms=navigator.mediaSession;
+  ms.setActionHandler("play",()=>play()); ms.setActionHandler("pause",()=>pause()); ms.setActionHandler("stop",()=>pause());
+  ms.setActionHandler("previoustrack",()=>step(-1)); ms.setActionHandler("nexttrack",()=>step(1));
+}
+function step(d){ const i=cur?ALL.indexOf(cur):(d>0?-1:0); select(ALL[(i+d+ALL.length)%ALL.length].id,true); }
+
+function clean(t){ return (t||"").replace(/\s*\{\+info[^}]*\}\s*/i,"").trim(); }
+async function icecast(c){
+  try{
+    const j=await (await fetch(c.meta.base+"/status-json.xsl",{cache:"no-store"})).json();
+    let s=j.icestats.source; s=Array.isArray(s)?s:[s];
+    const src=s.find(x=>(x.listenurl||"").endsWith(c.meta.mount))||s[0];
+    const t=clean(src&&src.title); if(!t||cur!==c) return;
+    const m=t.match(/^(.*?)\s+-\s+(.*)$/);
+    setMedia(m?m[2]:t, m?m[1]:c.artist, c.name);
+  }catch(e){}
+}
+function startMeta(c){ clearInterval(poll); if(c.meta&&c.meta.type==="icecast"){icecast(c);poll=setInterval(()=>icecast(c),15000);} }
+
+function load(c){
+  if(hls){hls.destroy();hls=null;}
+  if(/\.m3u8/.test(c.url) && !au.canPlayType("application/vnd.apple.mpegurl") && window.Hls && Hls.isSupported()){
+    hls=new Hls({lowLatencyMode:false});
+    hls.on(Hls.Events.ERROR,(_,d)=>{ if(d.fatal){ if(d.type===Hls.ErrorTypes.NETWORK_ERROR){setStatus("Reconnecting");hls.startLoad();} else setStatus("Error"); }});
+    hls.loadSource(c.url); hls.attachMedia(au);
+  } else { au.src=c.url; }
+}
+function select(id,autoplay){
+  const c=ALL.find(x=>x.id===id); if(!c) return; cur=c;
+  document.querySelector(`input[value="${id}"]`).checked=true;
+  try{localStorage.setItem("lastCh",id)}catch(e){}
+  status=wantPlay||autoplay?"Connecting":"Stopped"; live=false;
+  setMedia(c.name,c.artist,c.desc);
+  startMeta(c); load(c); stale=false;
+  if(autoplay) play();
+}
+async function play(){
+  if(!cur) select(ALL[0].id);
+  if(stale){load(cur);stale=false;}
+  wantPlay=true; setStatus("Connecting");
+  try{ await au.play(); }catch(e){ if(e.name!=="AbortError") setStatus("Tap play"); }
+}
+function pause(){ wantPlay=false; stale=true; au.pause(); if(hls) hls.stopLoad(); }
+const playing=p=>{ document.body.classList.toggle("on",p); ico.setAttribute("d",p?STOP:PLAY); pp.setAttribute("aria-label",p?"Stop":"Play"); };
+au.addEventListener("playing",()=>{playing(true);setStatus("Live");if("mediaSession" in navigator)navigator.mediaSession.playbackState="playing"});
+au.addEventListener("pause",()=>{playing(false);setStatus("Stopped");if("mediaSession" in navigator)navigator.mediaSession.playbackState="paused"});
+au.addEventListener("waiting",()=>wantPlay&&setStatus("Buffering"));
+au.addEventListener("error",()=>{ if(cur&&au.src){ playing(false); setStatus("Can't play"); } });
+au.addEventListener("stalled",()=>{ if(wantPlay) setTimeout(()=>{ if(wantPlay&&!au.paused&&au.readyState<3){load(cur);au.play().catch(()=>{});} },8000); });
+window.addEventListener("online",()=>{ if(wantPlay&&cur){load(cur);au.play().catch(()=>{});} });
+
+pp.onclick=()=>(wantPlay?pause():play());
+$("prev").onclick=()=>step(-1); $("next").onclick=()=>step(1);
+$("vol").oninput=e=>au.volume=e.target.value;
+document.querySelectorAll('input[name=ch]').forEach(r=>r.addEventListener("click",()=>{ if(cur&&cur.id===r.value&&!wantPlay) play(); else if(!cur||cur.id!==r.value) select(r.value,true); }));
+renderNow();
+try{ const last=localStorage.getItem("lastCh"); if(last&&ALL.some(x=>x.id===last)) select(last,false); }catch(e){}
+</script>
+</body>
+</html>
